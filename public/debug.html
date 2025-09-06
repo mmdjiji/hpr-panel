@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HPR 调试工具</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5; 
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { 
+            background: white; 
+            margin: 20px 0; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+        }
+        .success { color: #67c23a; }
+        .error { color: #f56c6c; }
+        .warning { color: #e6a23c; }
+        pre { 
+            background: #f5f5f5; 
+            padding: 15px; 
+            border-radius: 5px; 
+            overflow-x: auto; 
+            font-size: 12px;
+        }
+        button {
+            background: #409eff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #66b1ff; }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background: #67c23a; }
+        .status-error { background: #f56c6c; }
+        .status-warning { background: #e6a23c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 HPR 管理面板调试工具</h1>
+        
+        <div class="section">
+            <h2>🔐 认证状态</h2>
+            <div id="auth-status">检查中...</div>
+            <button onclick="testLogin()">测试登录</button>
+            <button onclick="clearAuth()">清除认证</button>
+        </div>
+        
+        <div class="section">
+            <h2>🔗 API 连接测试</h2>
+            <div id="api-status">测试中...</div>
+            <button onclick="testAPI()">重新测试API</button>
+        </div>
+        
+        <div class="section">
+            <h2>📍 路由状态</h2>
+            <div id="route-status">检查中...</div>
+            <button onclick="navigateTo('/dashboard')">跳转到Dashboard</button>
+            <button onclick="navigateTo('/login')">跳转到登录</button>
+        </div>
+        
+        <div class="section">
+            <h2>🎨 样式检查</h2>
+            <div id="style-status">检查中...</div>
+        </div>
+        
+        <div class="section">
+            <h2>📱 快速操作</h2>
+            <button onclick="quickLogin()">快速登录 (hpr/p@ssw0rd)</button>
+            <button onclick="showLocalStorage()">查看 localStorage</button>
+            <button onclick="clearAll()">清理所有数据</button>
+        </div>
+    </div>
+
+    <script>
+        // 检查认证状态
+        function checkAuth() {
+            const authDiv = document.getElementById('auth-status');
+            const credentials = localStorage.getItem('hpr-credentials');
+            
+            if (credentials) {
+                try {
+                    const creds = JSON.parse(credentials);
+                    authDiv.innerHTML = `
+                        <div><span class="status-indicator status-success"></span><span class="success">✓ 已登录</span></div>
+                        <div>用户名: <strong>${creds.username}</strong></div>
+                        <div>密码: <strong>${creds.password.replace(/./g, '*')}</strong></div>
+                    `;
+                } catch (e) {
+                    authDiv.innerHTML = `<div><span class="status-indicator status-error"></span><span class="error">✗ 认证数据损坏: ${e.message}</span></div>`;
+                }
+            } else {
+                authDiv.innerHTML = `<div><span class="status-indicator status-error"></span><span class="error">✗ 未登录</span></div>`;
+            }
+        }
+        
+        // 测试API连接
+        async function testAPI() {
+            const apiDiv = document.getElementById('api-status');
+            apiDiv.innerHTML = '测试中...';
+            
+            try {
+                const credentials = localStorage.getItem('hpr-credentials');
+                const headers = { 'Accept': 'application/json' };
+                
+                if (credentials) {
+                    const { username, password } = JSON.parse(credentials);
+                    if (username && password && username !== 'anonymous') {
+                        headers['Authorization'] = `Basic ${btoa(username + ':' + password)}`;
+                    }
+                }
+                
+                const response = await fetch('/api/info', { headers });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    apiDiv.innerHTML = `
+                        <div><span class="status-indicator status-success"></span><span class="success">✓ API连接正常</span></div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    apiDiv.innerHTML = `
+                        <div><span class="status-indicator status-error"></span><span class="error">✗ API连接失败</span></div>
+                        <div>状态码: ${response.status}</div>
+                        <div>状态文本: ${response.statusText}</div>
+                    `;
+                }
+            } catch (error) {
+                apiDiv.innerHTML = `
+                    <div><span class="status-indicator status-error"></span><span class="error">✗ API连接错误</span></div>
+                    <div>错误: ${error.message}</div>
+                `;
+            }
+        }
+        
+        // 检查路由状态
+        function checkRoute() {
+            const routeDiv = document.getElementById('route-status');
+            routeDiv.innerHTML = `
+                <div>当前路径: <strong>${window.location.pathname}</strong></div>
+                <div>完整URL: <strong>${window.location.href}</strong></div>
+                <div>Hash: <strong>${window.location.hash || '无'}</strong></div>
+            `;
+        }
+        
+        // 检查样式
+        function checkStyle() {
+            const styleDiv = document.getElementById('style-status');
+            
+            // 检查Element Plus是否加载
+            const elButton = document.createElement('div');
+            elButton.className = 'el-button';
+            document.body.appendChild(elButton);
+            
+            const styles = window.getComputedStyle(elButton);
+            const hasElementPlus = styles.display !== 'block' || styles.position !== 'static';
+            
+            document.body.removeChild(elButton);
+            
+            styleDiv.innerHTML = `
+                <div><span class="status-indicator ${hasElementPlus ? 'status-success' : 'status-error'}"></span>
+                Element Plus 样式: ${hasElementPlus ? '✓ 已加载' : '✗ 未加载'}</div>
+            `;
+        }
+        
+        // 快速登录
+        function quickLogin() {
+            localStorage.setItem('hpr-credentials', JSON.stringify({
+                username: 'hpr',
+                password: 'p@ssw0rd'
+            }));
+            alert('已设置登录凭据，请刷新页面');
+            checkAuth();
+        }
+        
+        // 测试登录流程
+        async function testLogin() {
+            try {
+                const credentials = { username: 'hpr', password: 'p@ssw0rd' };
+                localStorage.setItem('hpr-credentials', JSON.stringify(credentials));
+                
+                const response = await fetch('/api/info', {
+                    headers: {
+                        'Authorization': `Basic ${btoa(credentials.username + ':' + credentials.password)}`,
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    alert('登录测试成功！');
+                    checkAuth();
+                    testAPI();
+                } else {
+                    alert(`登录测试失败: ${response.status}`);
+                }
+            } catch (error) {
+                alert(`登录测试错误: ${error.message}`);
+            }
+        }
+        
+        // 清除认证
+        function clearAuth() {
+            localStorage.removeItem('hpr-credentials');
+            alert('已清除认证信息');
+            checkAuth();
+        }
+        
+        // 显示localStorage
+        function showLocalStorage() {
+            const items = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                items.push(`${key}: ${localStorage.getItem(key)}`);
+            }
+            alert('localStorage 内容:\n' + (items.length ? items.join('\n') : '(空)'));
+        }
+        
+        // 清理所有数据
+        function clearAll() {
+            localStorage.clear();
+            alert('已清理所有数据');
+            window.location.reload();
+        }
+        
+        // 导航
+        function navigateTo(path) {
+            window.location.href = path;
+        }
+        
+        // 初始化
+        checkAuth();
+        testAPI();
+        checkRoute();
+        checkStyle();
+    </script>
+</body>
+</html>

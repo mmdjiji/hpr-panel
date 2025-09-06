@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple API Test</title>
+</head>
+<body>
+    <h1>Simple API Test</h1>
+    <button onclick="testWithoutAuth()">Test Without Auth</button>
+    <button onclick="testWithAuth()">Test With Auth</button>
+    <div id="result"></div>
+
+    <script>
+        async function testWithoutAuth() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                console.log('Testing API without auth');
+                
+                const response = await fetch('/api/info');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <h3>Success (No Auth)!</h3>
+                        <p>Status: ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                    console.log('API Response:', data);
+                } else {
+                    const text = await response.text();
+                    resultDiv.innerHTML = `
+                        <h3>HTTP Error (No Auth)</h3>
+                        <p>Status: ${response.status}</p>
+                        <p>Response: ${text}</p>
+                    `;
+                    console.log('HTTP Error:', response.status, text);
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3>Network Error!</h3>
+                    <p>Message: ${error.message}</p>
+                `;
+                console.error('Network Error:', error);
+            }
+        }
+
+        async function testWithAuth() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                console.log('Testing API with auth');
+                
+                const basicAuth = btoa('hpr:p@ssw0rd');
+                const response = await fetch('/api/info', {
+                    headers: {
+                        'Authorization': `Basic ${basicAuth}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <h3>Success (With Auth)!</h3>
+                        <p>Status: ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                    console.log('API Response:', data);
+                } else {
+                    const text = await response.text();
+                    resultDiv.innerHTML = `
+                        <h3>HTTP Error (With Auth)</h3>
+                        <p>Status: ${response.status}</p>
+                        <p>Response: ${text}</p>
+                    `;
+                    console.log('HTTP Error:', response.status, text);
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3>Network Error!</h3>
+                    <p>Message: ${error.message}</p>
+                `;
+                console.error('Network Error:', error);
+            }
+        }
+    </script>
+</body>
+</html>
